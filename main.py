@@ -87,15 +87,19 @@ def home():
 @app.post("/predict/")
 def predict_phishing(url: str):
     """Predict if a URL is phishing or legitimate, checking against the blacklist first."""
-    
-    # Step 1: Check if the URL is in the blacklist
-    if url in blacklist_urls:
-        return {"url": url, "prediction": "Phishing"}
 
-    # Step 2: Extract features and log them
+    # Step 1: Extract features first, regardless of blacklist
     features_df = extract_features(url)
 
-    # Ensure order matches the trained model
+    # Step 2: If URL is blacklisted, return phishing result with features
+    if url in blacklist_urls:
+        return {
+            "url": url,
+            "prediction": "Phishing",
+            "extracted_features": features_df.to_dict(orient="records")[0]
+        }
+
+    # Step 3: Ensure feature order matches model
     try:
         features_df = features_df[model.feature_names_in_]
     except AttributeError:
@@ -103,10 +107,10 @@ def predict_phishing(url: str):
 
     print("Final Feature DataFrame Before Prediction:\n", features_df)  # Debugging before prediction
 
-    # Step 3: Predict
+    # Step 4: Predict
     prediction = model.predict(features_df)[0]
     result = "Phishing" if prediction == 1 else "Legitimate"
-    
+
     return {
         "url": url,
         "prediction": result,
